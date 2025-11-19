@@ -1,0 +1,20 @@
+{
+  "name": "aer-lemmings",
+  "version": "1.0.0",
+  "description": "A web-based game inspired by Lemmings - guide passengers through airport levels",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "serve": "npx http-server . -p 8080 -o -c-1",
+    "start": "npm run build && npm run serve"
+  },
+  "keywords": ["game", "lemmings", "airport", "canvas"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  }
+}
+

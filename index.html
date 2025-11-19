@@ -1,18 +1,184 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cyberpunk Fireworks</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <div class="container">
-      <div class="canvas-wrapper">
-        <canvas id="fireworksCanvas" width="1280" height="720"></canvas>
-      </div>
-      <button id="fireworksBtn">Launch Fireworks</button>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aer Lemmings - Guide Passengers to Check-In</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        body {
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            background: #1a1a2e;
+            background-image: 
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        .game-container {
+            background: #0f3460;
+            border: 4px solid #16213e;
+            box-shadow: 
+                0 0 0 2px #0a1929,
+                inset 0 0 20px rgba(0,0,0,0.5);
+            padding: 20px;
+            max-width: 1240px;
+        }
+
+        .logo-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .logo-container img {
+            max-width: 100%;
+            height: auto;
+            max-height: 150px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #00ff41;
+            margin-bottom: 10px;
+            font-size: 1.8em;
+            text-shadow: 
+                3px 3px 0px #0a1929,
+                0 0 10px #00ff41;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #ffd700;
+            margin-bottom: 20px;
+            font-size: 0.7em;
+            text-shadow: 2px 2px 0px #0a1929;
+        }
+
+        #gameCanvas {
+            border: 4px solid #00ff41;
+            box-shadow: 
+                0 0 0 2px #0a1929,
+                0 0 20px rgba(0, 255, 65, 0.3),
+                inset 0 0 20px rgba(0,0,0,0.3);
+            display: block;
+            margin: 0 auto;
+            background: #1a1a2e;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+
+        .instructions {
+            margin-top: 20px;
+            padding: 15px;
+            background: #16213e;
+            border: 2px solid #00ff41;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+            max-width: 1200px;
+        }
+
+        .instructions h2 {
+            color: #00ff41;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            text-shadow: 2px 2px 0px #0a1929;
+        }
+
+        .instructions ul {
+            list-style-position: inside;
+            color: #ffd700;
+            line-height: 2;
+            font-size: 0.6em;
+        }
+
+        .instructions li {
+            margin: 5px 0;
+        }
+
+        .power-legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .power-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .power-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+
+        .power-color.bridge { background: #00ff41; }
+        .power-color.door { background: #ff6b00; }
+        .power-color.security { background: #ff00ff; }
+        .power-color.normal { background: #00aaff; }
+        .power-item span {
+            color: #ffd700;
+            font-size: 0.6em;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="logo-container">
+            <img id="gameLogo" src="logo.png" alt="Aer Lemmings Logo" style="display: none;" onerror="this.style.display='none';">
+        </div>
+        <h1>✈️ Aer Lemmings</h1>
+        <p class="subtitle">Guide 100 passengers through the airport to check-in!</p>
+        <canvas id="gameCanvas"></canvas>
+        <div class="instructions">
+            <h2>How to Play</h2>
+            <ul>
+                <li><strong>Goal:</strong> Guide at least 50 passengers to the check-in gate within 5 minutes</li>
+                <li><strong>Click</strong> to start the game and advance through levels</li>
+                <li><strong>Spacebar/Escape:</strong> Pause/Resume the game</li>
+                <li><strong>Activate Powers:</strong> Click on a passenger with a ⭐ (gold star) to select them, then click near a matching obstacle to use their power!</li>
+                <li>Some passengers have special powers (indicated by a gold star and icon):</li>
+            </ul>
+            <div class="power-legend">
+                <div class="power-item">
+                    <div class="power-color bridge"></div>
+                    <span><strong>Green:</strong> Bridge Builder - Can build bridges over gaps</span>
+                </div>
+                <div class="power-item">
+                    <div class="power-color door"></div>
+                    <span><strong>Orange:</strong> Door Breaker - Can break through doors</span>
+                </div>
+                <div class="power-item">
+                    <div class="power-color security"></div>
+                    <span><strong>Purple:</strong> Security Briber - Can bypass security checkpoints</span>
+                </div>
+                <div class="power-item">
+                    <div class="power-color normal"></div>
+                    <span><strong>Blue:</strong> Regular passenger</span>
+                </div>
+            </div>
+            <p style="margin-top: 15px; color: #F44336; font-weight: bold;">
+                ⚠️ Watch out for competitor airlines (Ryan Air, Fly Be, Virgin) - they'll stop your passengers!
+            </p>
+        </div>
     </div>
-    <script src="script.js"></script>
-  </body>
+    <script type="module" src="dist/index.js?v=2"></script>
+</body>
 </html>
+
