@@ -50,20 +50,22 @@ export class GameEngine {
         this.loadLogo();
     }
     loadLogo() {
-        // Try to load logo if it exists
+        // Load logo from root directory
         this.logoImage = new Image();
         this.logoImage.onload = () => {
             // Logo loaded successfully - trigger a redraw
+            console.log('Logo loaded successfully:', this.logoImage?.width, 'x', this.logoImage?.height);
             if (this.gameState === GameState.MENU) {
                 this.render();
             }
         };
-        this.logoImage.onerror = () => {
+        this.logoImage.onerror = (e) => {
             // Logo not found, will use text instead
+            console.warn('Logo not found at logo.png, using text fallback');
             this.logoImage = null;
         };
-        // Try common logo file names
-        this.logoImage.src = 'logo.png';
+        // Load logo from root directory
+        this.logoImage.src = './logo.png';
     }
     initializePowerCounts() {
         // Only wall smashing power
@@ -99,18 +101,18 @@ export class GameEngine {
             height: 20,
             id: 'spawn_platform'
         });
-        // Generate platforms - way longer now!
-        const platformCount = 8 + level * 2; // Fewer but longer platforms
+        // Generate MANY MORE platforms for navigation!
+        const platformCount = 25 + level * 8; // Way more platforms!
         const platforms = [];
         // Create a path of platforms from spawn to destination
         let currentX = spawnPlatformWidth + 50;
         let currentY = spawnPlatformY;
         const targetX = this.canvas.width - 200;
         const targetY = this.groundLevel - 30;
-        // Main path platforms - WAY LONGER
+        // Main path platforms - create many connected platforms
         while (currentX < targetX - 100) {
-            const platformWidth = 250 + Math.random() * 300; // Much longer platforms (250-550px)
-            const nextY = currentY + (Math.random() < 0.3 ? -80 : 0) + (Math.random() < 0.2 ? 100 : 0);
+            const platformWidth = 150 + Math.random() * 200; // Platforms (150-350px)
+            const nextY = currentY + (Math.random() < 0.4 ? -60 : 0) + (Math.random() < 0.3 ? 80 : 0);
             const clampedY = Math.max(50, Math.min(nextY, this.groundLevel - 100));
             platforms.push({
                 x: currentX,
@@ -124,20 +126,33 @@ export class GameEngine {
                 height: 20,
                 id: `path_platform_${platforms.length}`
             });
-            currentX += platformWidth + (50 + Math.random() * 100); // Larger gaps between platforms
+            currentX += platformWidth + (30 + Math.random() * 60); // Smaller gaps for more platforms
             currentY = clampedY;
         }
-        // Add additional long platforms throughout the level
+        // Add MANY additional platforms throughout the level at various heights
         for (let i = 0; i < platformCount - platforms.length; i++) {
-            const x = 100 + Math.random() * (this.canvas.width - 400);
-            const y = 80 + Math.random() * (this.groundLevel - 150);
-            const width = 200 + Math.random() * 300; // Long platforms (200-500px)
+            const x = 50 + Math.random() * (this.canvas.width - 200);
+            const y = 60 + Math.random() * (this.groundLevel - 120);
+            const width = 120 + Math.random() * 250; // Platforms (120-370px)
             obstacles.push({
                 type: 'wall',
                 position: { x, y },
                 width: width,
                 height: 20,
                 id: `platform_${i}`
+            });
+        }
+        // Add even more small connecting platforms
+        for (let i = 0; i < 15 + level * 3; i++) {
+            const x = 100 + Math.random() * (this.canvas.width - 300);
+            const y = 70 + Math.random() * (this.groundLevel - 140);
+            const width = 80 + Math.random() * 150; // Smaller connecting platforms (80-230px)
+            obstacles.push({
+                type: 'wall',
+                position: { x, y },
+                width: width,
+                height: 20,
+                id: `small_platform_${i}`
             });
         }
         // Create vertical walls (barriers) - MANY more
@@ -364,10 +379,11 @@ export class GameEngine {
             passenger.update(deltaTime, this.platforms, this.walls, this.checkInGate.x, this.checkInGate.y);
             // Check collisions with obstacles (for special interactions) - for all passengers
             this.handleObstacleCollisions(passenger);
-            // Check if reached gate
+            // Check if reached gate - passengers disappear when they reach it
             const justReached = passenger.checkReachedGate(this.checkInGate, this.gateWidth);
             if (justReached) {
                 this.soundManager.playReachGate();
+                // Passenger is now inactive and will disappear
             }
         });
         // Baddies removed - no longer updating them
@@ -468,11 +484,13 @@ export class GameEngine {
         switch (obstacle.type) {
             case 'wall':
                 // Wall smashing power - can break through walls!
-                if (passenger.superPower === 'doorBreaker' && passenger.activateSuperPower()) {
+                // BUT: Don't break platforms (horizontal walls that passengers can walk on)
+                const isPlatform = obstacle.width > obstacle.height; // Horizontal = platform
+                if (passenger.superPower === 'doorBreaker' && passenger.activateSuperPower() && !isPlatform) {
+                    // Only break vertical walls, not horizontal platforms
                     // Remove wall obstacle
                     this.obstacles = this.obstacles.filter(o => o.id !== obstacle.id);
-                    // Also remove from platforms/walls arrays
-                    this.platforms = this.platforms.filter(p => !(p.x === obstacle.x && p.y === obstacle.y && p.width === obstacle.width));
+                    // Remove from walls array (but NOT platforms - platforms stay!)
                     this.walls = this.walls.filter(w => !(w.x === obstacle.x && w.y === obstacle.y && w.width === obstacle.width && w.height === obstacle.height));
                     this.soundManager.playDoorBreak();
                     // Remove power after use - can only use once!
@@ -480,7 +498,12 @@ export class GameEngine {
                     passenger.color = this.getColorForPower(null);
                     passenger.stopUsingPower();
                 }
+                else if (isPlatform) {
+                    // If it's a platform, passengers can walk on it - don't reverse, just let them pass
+                    // Platforms are handled by the movement system
+                }
                 else {
+                    // Vertical wall - reverse direction if no power
                     passenger.reverseDirection();
                     this.soundManager.playCollision();
                 }
@@ -544,12 +567,20 @@ export class GameEngine {
         }
         // Draw logo if available
         if (this.logoImage && this.logoImage.complete && this.logoImage.naturalWidth > 0) {
-            // Center the logo on screen
-            const logoWidth = Math.min(500, this.canvas.width - 100);
-            const logoHeight = (this.logoImage.height / this.logoImage.width) * logoWidth;
+            // Center the logo on screen - make it prominent
+            const maxLogoWidth = Math.min(600, this.canvas.width - 80);
+            const maxLogoHeight = 250;
+            const aspectRatio = this.logoImage.height / this.logoImage.width;
+            let logoWidth = maxLogoWidth;
+            let logoHeight = logoWidth * aspectRatio;
+            // If height is too tall, scale down
+            if (logoHeight > maxLogoHeight) {
+                logoHeight = maxLogoHeight;
+                logoWidth = logoHeight / aspectRatio;
+            }
             const logoX = (this.canvas.width - logoWidth) / 2;
-            const logoY = this.canvas.height / 2 - logoHeight / 2 - 60;
-            // Draw logo with pixelated rendering
+            const logoY = this.canvas.height / 2 - logoHeight / 2 - 40;
+            // Draw logo with pixelated rendering (image smoothing is already disabled)
             this.ctx.drawImage(this.logoImage, logoX, logoY, logoWidth, logoHeight);
         }
         else {
@@ -818,9 +849,9 @@ export class GameEngine {
         this.ctx.textAlign = 'center';
         this.ctx.fillText('CHECK-IN', this.checkInGate.x + this.gateWidth / 2, this.checkInGate.y + 20);
         this.ctx.fillText('GATE', this.checkInGate.x + this.gateWidth / 2, this.checkInGate.y + 35);
-        // Draw passengers
+        // Draw passengers (only active ones that haven't reached the gate)
         this.passengers.forEach(passenger => {
-            if (passenger.isActive || passenger.hasReachedGate) {
+            if (passenger.isActive && !passenger.hasReachedGate) {
                 const isSelected = this.selectedPassenger === passenger;
                 const centerX = passenger.position.x + passenger.width / 2;
                 const centerY = passenger.position.y + passenger.height / 2;
